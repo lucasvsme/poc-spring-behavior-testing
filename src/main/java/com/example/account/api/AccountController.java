@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -37,19 +38,21 @@ public class AccountController {
     }
 
     @PostMapping
-    @Transactional
-    public ResponseEntity<Void> create(@Valid AccountRequest createAccount,
-                                       UriComponentsBuilder uriComponentsBuilder) {
+    public ResponseEntity<AccountResponse> create(@Valid @RequestBody AccountRequest accountRequest,
+                                                  UriComponentsBuilder uriComponentsBuilder) {
+        LOGGER.info("Trying to create account (request={})", accountRequest);
         final var account = new Account();
-        account.setName(createAccount.getName());
+        account.setName(accountRequest.getName());
         account.setBalance(BigDecimal.ZERO);
 
         final var accountCreated = accountRepository.save(account);
         LOGGER.info("Account created (account={})", accountCreated);
 
+        final var accountUri = uriComponentsBuilder.path("/{accountId}")
+                .build(accountCreated.getId());
+
         return ResponseEntity.status(HttpStatus.CREATED)
-                .location(uriComponentsBuilder.path("/{accountId}")
-                        .build(accountCreated.getId()))
+                .location(accountUri)
                 .build();
     }
 
@@ -70,11 +73,32 @@ public class AccountController {
                 .body(accountResponse);
     }
 
+    @PostMapping("/{accountId}/deposit")
+    @Transactional
+    public ResponseEntity<DepositResponse> deposit(@PathVariable Long accountId,
+                                                   @Valid @RequestBody DepositRequest depositRequest) {
+        LOGGER.info("Trying to deposit money (accountId={}, request={})", accountId, depositRequest);
+        final var account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new AccountNotFoundException(accountId));
+
+        account.setBalance(account.getBalance().add(depositRequest.getAmount()));
+        accountRepository.save(account);
+        LOGGER.info("Money deposited into account (account={})", account);
+
+        final var depositResponse = DepositResponse.builder()
+                .balance(account.getBalance())
+                .build();
+        LOGGER.info("Money deposit finished successfully (response={})", depositResponse);
+
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(depositResponse);
+    }
+
     @PostMapping("/{accountId}/transfer")
     @Transactional
     public ResponseEntity<TransferResponse> transfer(@PathVariable Long accountId,
-                                                     @Valid TransferRequest transferRequest) {
-        LOGGER.info("Trying to execute money transfer (request={})", transferRequest);
+                                                     @Valid @RequestBody TransferRequest transferRequest) {
+        LOGGER.info("Trying to execute money transfer (accountId={}, request={})", accountId, transferRequest);
         final var sourceAccount = accountRepository.findById(accountId)
                 .orElseThrow(() -> new AccountNotFoundException(accountId));
 
