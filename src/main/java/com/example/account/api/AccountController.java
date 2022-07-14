@@ -23,7 +23,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
-import java.util.Map;
 import java.util.Set;
 
 @RestController
@@ -135,7 +134,7 @@ public class AccountController {
     }
 
     @ExceptionHandler(AccountTransferException.class)
-    private ResponseEntity<Object> handleAccountTransferException(AccountTransferException exception) {
+    private ResponseEntity<TransferResponseError> handleAccountTransferException(AccountTransferException exception) {
         LOGGER.info(
                 "Account {} does not have enough balance to transfer {} to account {}",
                 exception.getSourceAccountId(),
@@ -143,7 +142,10 @@ public class AccountController {
                 exception
         );
 
+        final var transferResponseError = new TransferResponseError();
+        transferResponseError.setMessage(exception.getMessage());
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Map.of("message", exception.getMessage()));
+                .body(transferResponseError);
     }
 }
