@@ -2,6 +2,7 @@ plugins {
     id("org.springframework.boot") version "3.0.0-M3"
     id("io.spring.dependency-management") version "1.0.11.RELEASE"
     java
+    jacoco
 }
 
 group = "com.example"
@@ -55,4 +56,9 @@ dependencyManagement {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+jacoco {
+    toolVersion = "0.8.8" // Specific version to work with Java 18
 }
