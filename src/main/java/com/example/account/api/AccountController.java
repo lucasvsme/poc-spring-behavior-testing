@@ -7,6 +7,7 @@ import com.example.account.AccountTransferException;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
+import java.text.DecimalFormat;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,9 +34,12 @@ public class AccountController {
     private static final Logger LOGGER = LoggerFactory.getLogger(AccountController.class);
 
     private final AccountRepository accountRepository;
+    private final DecimalFormat balanceFormat;
 
-    public AccountController(AccountRepository accountRepository) {
+    public AccountController(AccountRepository accountRepository,
+                             @Qualifier("balanceFormat") DecimalFormat decimalFormat) {
         this.accountRepository = accountRepository;
+        this.balanceFormat = decimalFormat;
     }
 
     @PostMapping
@@ -62,11 +67,10 @@ public class AccountController {
         final var account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new AccountNotFoundException(accountId));
 
-        final var accountResponse = AccountResponse.builder()
-                .id(account.getId())
-                .name(account.getName())
-                .balance(account.getBalance())
-                .build();
+        final var accountResponse = new AccountResponse();
+        accountResponse.setId(account.getId());
+        accountResponse.setName(account.getName());
+        accountResponse.setBalance(balanceFormat.format(account.getBalance()));
         LOGGER.info("Found account by ID (account={})", accountResponse);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -85,9 +89,8 @@ public class AccountController {
         accountRepository.save(account);
         LOGGER.info("Money deposited into account (account={})", account);
 
-        final var depositResponse = DepositResponse.builder()
-                .balance(account.getBalance())
-                .build();
+        final var depositResponse = new DepositResponse();
+        depositResponse.setBalance(balanceFormat.format(account.getBalance()));
         LOGGER.info("Money deposit finished successfully (response={})", depositResponse);
 
         return ResponseEntity.status(HttpStatus.OK)
@@ -114,10 +117,9 @@ public class AccountController {
         accountRepository.saveAll(Set.of(sourceAccount, targetAccount));
         LOGGER.info("Money transferred between accounts (source={}, target={})", sourceAccount, targetAccount);
 
-        final var transferResponse = TransferResponse.builder()
-                .sourceAccountBalance(sourceAccount.getBalance())
-                .targetAccountBalance(targetAccount.getBalance())
-                .build();
+        final var transferResponse = new TransferResponse();
+        transferResponse.setSourceAccountBalance(balanceFormat.format(sourceAccount.getBalance()));
+        transferResponse.setTargetAccountBalance(balanceFormat.format(targetAccount.getBalance()));
         LOGGER.info("Money transaction finished successfully (response={})", transferResponse);
 
         return ResponseEntity.status(HttpStatus.OK)

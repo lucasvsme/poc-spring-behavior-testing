@@ -1,13 +1,11 @@
 package com.example.account.api;
 
 import jakarta.validation.constraints.NotNull;
-import lombok.Builder;
 import lombok.Data;
-
-import java.math.BigDecimal;
+import lombok.NoArgsConstructor;
 
 @Data
-@Builder
+@NoArgsConstructor
 public final class AccountResponse {
 
     @NotNull
@@ -17,5 +15,5 @@ public final class AccountResponse {
     private String name;
 
     @NotNull
-    private BigDecimal balance;
+    private String balance;
 }
