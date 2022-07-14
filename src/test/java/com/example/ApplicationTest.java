@@ -1,30 +1,27 @@
 package com.example;
 
+import com.example.testing.AutoConfigureDatabaseContainer;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
+import org.springframework.http.HttpStatus;
+import org.springframework.test.web.reactive.server.WebTestClient;
 
-@SpringBootTest
-@Testcontainers
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@AutoConfigureWebTestClient
+@AutoConfigureDatabaseContainer
 class ApplicationTest {
 
-    @Container
-    private static final PostgreSQLContainer<?> POSTGRES_CONTAINERS =
-            new PostgreSQLContainer<>(DockerImageName.parse("postgres"));
-
-    @DynamicPropertySource
-    private static void setProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES_CONTAINERS::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES_CONTAINERS::getUsername);
-        registry.add("spring.datasource.password", POSTGRES_CONTAINERS::getPassword);
-    }
+    @Autowired
+    private WebTestClient webTestClient;
 
     @Test
-    void contextLoads() {
+    void findingUnknownAccount() {
+        webTestClient.get()
+                .uri("/accounts/5")
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.NOT_FOUND)
+                .expectBody().isEmpty();
     }
 }
