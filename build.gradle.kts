@@ -1,6 +1,6 @@
 plugins {
-    id("org.springframework.boot") version "3.0.0-M3"
-    id("io.spring.dependency-management") version "1.0.11.RELEASE"
+    id("org.springframework.boot") version "3.2.0"
+    id("io.spring.dependency-management") version "1.1.4"
     java
     jacoco
 }
@@ -10,7 +10,7 @@ version = "0.0.1-SNAPSHOT"
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(18))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
@@ -22,11 +22,10 @@ configurations {
 
 repositories {
     mavenCentral()
-    maven(url = "https://repo.spring.io/milestone")
 }
 
 ext {
-    set("testcontainersVersion", "1.17.3")
+    set("testcontainersVersion", "1.19.3")
 }
 
 dependencies {
@@ -41,7 +40,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
-    testImplementation(platform("io.cucumber:cucumber-bom:7.4.1"))
+    testImplementation(platform("io.cucumber:cucumber-bom:7.14.1"))
     testImplementation("io.cucumber:cucumber-java")
     testImplementation("io.cucumber:cucumber-spring")
     testImplementation("io.cucumber:cucumber-junit-platform-engine")
@@ -60,5 +59,5 @@ tasks.test {
 }
 
 jacoco {
-    toolVersion = "0.8.8" // Specific version to work with Java 18
+    toolVersion = "0.8.11"
 }
