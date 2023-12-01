@@ -136,7 +136,7 @@ public class AccountController {
     @ExceptionHandler(AccountTransferException.class)
     private ResponseEntity<TransferResponseError> handleAccountTransferException(AccountTransferException exception) {
         LOGGER.info(
-                "Account {} does not have enough balance to transfer {} to account {}",
+                "Account {} does not have enough balance to transfer to account {}",
                 exception.getSourceAccountId(),
                 exception.getTargetAccountId(),
                 exception
