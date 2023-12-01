@@ -1,21 +1,25 @@
 package com.example.account;
 
-import com.example.account.AccountRepository;
 import com.example.account.api.AccountRequest;
 import com.example.account.api.AccountResponse;
 import com.example.account.api.DepositRequest;
 import com.example.account.api.DepositResponse;
-import com.example.account.api.TransferResponseError;
 import com.example.account.api.TransferRequest;
 import com.example.account.api.TransferResponse;
+import com.example.account.api.TransferResponseError;
+import com.example.testing.DatabaseTestConfiguration;
 import io.cucumber.java.After;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import io.cucumber.spring.CucumberContextConfiguration;
 import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -29,6 +33,10 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(DatabaseTestConfiguration.class)
+@AutoConfigureWebTestClient
+@CucumberContextConfiguration
 public class AccountStepDefinitions {
 
     @Autowired

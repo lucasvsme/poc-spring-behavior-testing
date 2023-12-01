@@ -13,5 +13,5 @@ import static io.cucumber.junit.platform.engine.Constants.PLUGIN_PROPERTY_NAME;
 @SelectClasspathResource("com/example")
 @ConfigurationParameter(key = GLUE_PROPERTY_NAME, value = "com.example")
 @ConfigurationParameter(key = PLUGIN_PROPERTY_NAME, value = "html:build/reports/tests/bdd/index.html")
-public class CucumberConfiguration {
+public class CucumberTestConfiguration {
 }
