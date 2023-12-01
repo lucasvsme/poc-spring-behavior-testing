@@ -1,4 +1,4 @@
-package com.example.testing.steps;
+package com.example.account;
 
 import com.example.account.AccountRepository;
 import com.example.account.api.AccountRequest;
