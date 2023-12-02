@@ -14,7 +14,6 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.cucumber.spring.CucumberContextConfiguration;
-import org.junit.jupiter.api.Assertions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
@@ -29,9 +28,11 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.text.ParseException;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Import(DatabaseTestConfiguration.class)
@@ -49,8 +50,7 @@ public class AccountStepDefinitions {
     @Qualifier("balanceFormat")
     private DecimalFormat balanceFormat;
 
-    private AccountResponse sourceAccount, targetAccount;
-    private TransferResponse transferResponse;
+    private final Map<String, AccountResponse> accounts = new HashMap<>();
     private TransferResponseError transferResponseError;
 
     @Before
@@ -61,15 +61,6 @@ public class AccountStepDefinitions {
     @After
     public void after() {
         deleteAllAccounts();
-    }
-
-    private void deleteAllAccounts() {
-        if (sourceAccount != null && targetAccount != null) {
-            accountRepository.deleteAllById(List.of(
-                    sourceAccount.getId(),
-                    targetAccount.getId()
-            ));
-        }
     }
 
     @Given("Account {string} exists and has balance {string}")
@@ -88,28 +79,14 @@ public class AccountStepDefinitions {
 
         final var accountId = getAccountIdFromLocationHeader(exchangeResult);
         final var accountResponse = findAccountById(accountId);
+        accounts.put(accountName, accountResponse);
 
-        setAccountField(accountResponse);
         assertEquals(expectedInitialBalance, accountResponse.getBalance());
     }
 
-    private void setAccountField(AccountResponse accountResponse) {
-        if (accountResponse.getName().equals("Main")) {
-            sourceAccount = accountResponse;
-            return;
-        }
-
-        if (accountResponse.getName().equals("Secondary")) {
-            targetAccount = accountResponse;
-            return;
-        }
-
-        Assertions.fail("Created unknown account: " + accountResponse);
-    }
-
     @Given("The {string} account balance is {string}")
-    public void theAccountBalanceIs(String account, String balance) throws ParseException {
-        final var accountId = getAccountIdByName(account);
+    public void theAccountBalanceIs(String accountName, String balance) throws ParseException {
+        final var accountId = accounts.get(accountName).getId();
         final var depositRequest = new DepositRequest();
         depositRequest.setAmount(((BigDecimal) balanceFormat.parse(balance)));
 
@@ -121,54 +98,46 @@ public class AccountStepDefinitions {
                 .expectBody(DepositResponse.class)
                 .returnResult().getResponseBody();
 
-        setAccountBalanceField(accountId, depositResponse);
+        assertNotNull(depositResponse);
         assertEquals(depositResponse.getBalance(), balance);
-    }
-
-    private Long getAccountIdByName(String accountName) {
-        if (accountName.equals("Main")) {
-            return sourceAccount.getId();
-        }
-
-        if (accountName.equals("Secondary")) {
-            return targetAccount.getId();
-        }
-
-        throw new AssertionError("Tried to find unknown account with name " + accountName);
-    }
-
-    private void setAccountBalanceField(Long accountId, DepositResponse depositResponse) {
-        if (sourceAccount.getId().equals(accountId)) {
-            return;
-        }
-
-        if (targetAccount.getId().equals(accountId)) {
-            return;
-        }
-
-        Assertions.fail("Could not assign deposit response: " + accountId);
     }
 
     @When("I transfer {string} from {string} account to {string} account")
     public void iTransferFromAccountToAccount(String amount, String sourceAccountName, String targetAccountName) {
-        this.transferResponse = transfer(amount, sourceAccountName, targetAccountName)
+        final var transferResponse = transfer(amount, sourceAccountName, targetAccountName)
                 .expectStatus().isEqualTo(HttpStatus.OK)
                 .expectBody(TransferResponse.class)
                 .returnResult().getResponseBody();
+
+        assertNotNull(transferResponse);
     }
 
     @When("I try to transfer {string} from {string} account to {string} account")
     public void iTryToTransferFromAccountToAccount(String amount, String sourceAccountName, String targetAccountName) {
-        this.transferResponseError = transfer(amount, sourceAccountName, targetAccountName)
+        final var transferResponseError = transfer(amount, sourceAccountName, targetAccountName)
                 .expectStatus().isEqualTo(HttpStatus.BAD_REQUEST)
-                .returnResult(TransferResponseError.class)
-                .getResponseBody()
-                .blockFirst();
+                .expectBody(TransferResponseError.class)
+                .returnResult().getResponseBody();
+
+        assertNotNull(transferResponseError);
+        this.transferResponseError = transferResponseError;
+    }
+
+    @Then("The {string} account balance should be {string}")
+    public void theAccountBalanceShouldBe(String accountName, String expectedBalance) {
+        final var accountId = accounts.get(accountName).getId();
+        final var account = findAccountById(accountId);
+        assertEquals(expectedBalance, account.getBalance());
+    }
+
+    @Then("The transfer is cancelled with error {string}")
+    public void theTransferIsCancelledWithError(String expectedErrorMessage) {
+        assertEquals(expectedErrorMessage, transferResponseError.getMessage());
     }
 
     private WebTestClient.ResponseSpec transfer(String amount, String sourceAccountName, String targetAccountName) {
-        final var source = getAccountByName(sourceAccountName);
-        final var target = getAccountByName(targetAccountName);
+        final var source = accounts.get(sourceAccountName);
+        final var target = accounts.get(targetAccountName);
 
         final var transferRequest = new TransferRequest();
         transferRequest.setTargetAccountId(target.getId());
@@ -180,26 +149,13 @@ public class AccountStepDefinitions {
                 .exchange();
     }
 
-    @Then("The {string} account balance should be {string}")
-    public void theAccountBalanceShouldBe(String accountName, String expectedBalance) {
-        final var account = getAccountByName(accountName);
-
-        if (account.getName().equals("Main")) {
-            assertEquals(expectedBalance, transferResponse.getSourceAccountBalance());
-            return;
-        }
-
-        if (account.getName().equals("Secondary")) {
-            assertEquals(expectedBalance, transferResponse.getTargetAccountBalance());
-            return;
-        }
-
-        Assertions.fail("Tried to verify balance of unknown account with name " + accountName);
-    }
-
-    @Then("The transfer is cancelled with error {string}")
-    public void theTransferIsCancelledWithError(String expectedErrorMessage) {
-        assertEquals(expectedErrorMessage, transferResponseError.getMessage());
+    private AccountResponse findAccountById(Long accountId) {
+        return webTestClient.get()
+                .uri("/accounts/{accountId}", accountId)
+                .exchange()
+                .expectStatus().isEqualTo(HttpStatus.OK)
+                .expectBody(AccountResponse.class)
+                .returnResult().getResponseBody();
     }
 
     private Long getAccountIdFromLocationHeader(ExchangeResult exchangeResult) {
@@ -213,25 +169,11 @@ public class AccountStepDefinitions {
         return Long.parseLong(lastSegment);
     }
 
-    private AccountResponse findAccountById(Long accountId) {
-        return webTestClient.get()
-                .uri("/accounts/{accountId}", accountId)
-                .exchange()
-                .expectStatus().isEqualTo(HttpStatus.OK)
-                .returnResult(AccountResponse.class)
-                .getResponseBody()
-                .blockFirst();
-    }
+    private void deleteAllAccounts() {
+        final var accountIds = accounts.values().stream()
+                .map(AccountResponse::getId)
+                .toList();
 
-    private AccountResponse getAccountByName(String accountName) {
-        if (sourceAccount.getName().equals(accountName)) {
-            return sourceAccount;
-        }
-
-        if (targetAccount.getName().equals(accountName)) {
-            return targetAccount;
-        }
-
-        throw new AssertionError("Tried to find unknown account with name " + accountName);
+        accountRepository.deleteAllById(accountIds);
     }
 }
