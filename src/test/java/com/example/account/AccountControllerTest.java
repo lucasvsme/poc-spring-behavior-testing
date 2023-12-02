@@ -27,7 +27,8 @@ class AccountControllerTest {
     @Test
     void findingUnknownAccount() {
         // Defining unknown ID to represent source account
-        final var accountId = 5L;
+        final var accountId = 101L;
+        assertAccountDoesNotExist(accountId);
 
         // Trying to find it and expecting an error
         webTestClient.get()
@@ -40,7 +41,8 @@ class AccountControllerTest {
     @Test
     void depositingToUnknownAccount() {
         // Defining unknown ID to represent source account
-        final var accountId = 5L;
+        final var accountId = 203L;
+        assertAccountDoesNotExist(accountId);
 
         final var depositRequest = new DepositRequest();
         depositRequest.setAmount(BigDecimal.ONE);
@@ -56,7 +58,8 @@ class AccountControllerTest {
     @Test
     void transferringFromUnknownSourceAccount() {
         // Defining unknown ID to represent source account
-        final var sourceAccountId = 5L;
+        final var sourceAccountId = 924L;
+        assertAccountDoesNotExist(sourceAccountId);
 
         // Creating target account
         final var targetAccountRequest = new AccountRequest();
@@ -85,7 +88,8 @@ class AccountControllerTest {
         final var sourceAccount = createAccount(sourceAccountRequest);
 
         // Defining unknown ID to represent target account
-        final var targetAccountId = 5L;
+        final var targetAccountId = 123L;
+        assertAccountDoesNotExist(targetAccountId);
 
         // Defining the transfer
         final var transferRequest = new TransferRequest();
@@ -116,6 +120,13 @@ class AccountControllerTest {
                 .returnResult(AccountResponse.class)
                 .getResponseBody()
                 .blockFirst();
+    }
+
+    private void assertAccountDoesNotExist(Long accountId) {
+        webTestClient.get()
+                .uri("/accounts/{accountId}", accountId)
+                .exchange()
+                .expectStatus().isNotFound();
     }
 
     private Long getAccountIdFromLocationHeader(ExchangeResult exchangeResult) {
